@@ -1,1 +1,3 @@
-builddir/
+/builddir
+/subprojects/*
+!/subprojects/*.wrap

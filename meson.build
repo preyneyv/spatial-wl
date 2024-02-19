@@ -40,7 +40,7 @@ wayland_protocols = dependency('wayland-protocols')
 # Try first to find wlroots as a subproject, then as a system dependency
 wlroots_proj = subproject(
     'wlroots',
-    default_options: ['examples=false', 'freerdp=disabled'],
+    default_options: ['examples=false'],
     required: false,
 )
 if wlroots_proj.found()
@@ -62,7 +62,7 @@ executable('c_tinywl',
         xkbcommon,
         wayland_client,
         wayland_server,
-        wayland_protocolsm
+        wayland_protocols
     ],
     include_directories: c_tinywl_inc,
     install: true
