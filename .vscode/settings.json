@@ -1,3 +1,10 @@
 {
-    "C_Cpp.default.compileCommands": "/home/pranav/projects/compositor/c_tinywl/builddir/compile_commands.json"
+    "C_Cpp.default.compileCommands": "/home/pranav/projects/compositor/c_tinywl/builddir/compile_commands.json",
+    "files.associations": {
+        "log.h": "c",
+        "wlr_output.h": "c",
+        "backend.h": "c",
+        "wayland-server-core.h": "c",
+        "wlr_renderer.h": "c"
+    }
 }
