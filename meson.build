@@ -32,6 +32,7 @@ add_project_arguments(cc.get_supported_arguments([
 ]), language: 'c')
 
 
+glesv2 = dependency('glesv2')
 xkbcommon = dependency('xkbcommon')
 wayland_client = dependency('wayland-client')
 wayland_server = dependency('wayland-server')
@@ -51,20 +52,19 @@ endif
 
 subdir('protocol')
 
-c_tinywl_inc = include_directories('include')
-
-executable('c_tinywl',
-    files(
-        'src/main.c'
-    ),
-    dependencies: [
+ctwl_inc = include_directories('include')
+ctwl_sources = files('src/main.c')
+ctwl_deps = [glesv2,
         wlroots,
         xkbcommon,
         wayland_client,
         wayland_server,
-        wayland_protocols
-    ],
-    include_directories: c_tinywl_inc,
+        wayland_protocols,]
+
+executable('c_tinywl',
+    ctwl_sources + wl_protos_src,
+    include_directories: [ctwl_inc],
+    dependencies: ctwl_deps,
     install: true
 )
 

@@ -5,6 +5,9 @@
         "wlr_output.h": "c",
         "backend.h": "c",
         "wayland-server-core.h": "c",
-        "wlr_renderer.h": "c"
+        "wlr_renderer.h": "c",
+        "wlr_xdg_shell.h": "c",
+        "khrplatform.h": "c",
+        "wlr_subcompositor.h": "c"
     }
 }
