@@ -32,11 +32,13 @@ add_project_arguments(cc.get_supported_arguments([
 ]), language: 'c')
 
 
+
 glesv2 = dependency('glesv2')
 xkbcommon = dependency('xkbcommon')
 wayland_client = dependency('wayland-client')
 wayland_server = dependency('wayland-server')
 wayland_protocols = dependency('wayland-protocols')
+cglm = dependency('cglm')
 
 # Try first to find wlroots as a subproject, then as a system dependency
 wlroots_proj = subproject(
@@ -51,18 +53,22 @@ else
 endif
 
 subdir('protocol')
+subdir('shaders')
 
 ctwl_inc = include_directories('include')
-ctwl_sources = files('src/main.c')
-ctwl_deps = [glesv2,
-        wlroots,
-        xkbcommon,
-        wayland_client,
-        wayland_server,
-        wayland_protocols,]
+ctwl_sources = files('src/main.c', 'src/render.c')
+ctwl_deps = [
+    glesv2,
+    cglm,
+    wlroots,
+    xkbcommon,
+    wayland_client,
+    wayland_server,
+    wayland_protocols,
+]
 
 executable('c_tinywl',
-    ctwl_sources + wl_protos_src,
+    ctwl_sources + wl_protos_src + shaders_src,
     include_directories: [ctwl_inc],
     dependencies: ctwl_deps,
     install: true

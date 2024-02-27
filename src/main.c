@@ -1,21 +1,31 @@
 #define _POSIX_C_SOURCE 200809L
+#define CGLM_DEFINE_PRINTS
 
 #include <GLES2/gl2.h>
+#include <GLES2/gl2ext.h>
+#include <cglm/cglm.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 #include <wayland-server-core.h>
 #include <wlr/backend.h>
 #include <wlr/render/allocator.h>
+#include <wlr/render/egl.h>
 #include <wlr/render/gles2.h>
 #include <wlr/render/wlr_renderer.h>
 #include <wlr/render/wlr_texture.h>
 #include <wlr/types/wlr_compositor.h>
+#include <wlr/types/wlr_cursor.h>
 #include <wlr/types/wlr_data_device.h>
 #include <wlr/types/wlr_output.h>
+#include <wlr/types/wlr_pointer.h>
+#include <wlr/types/wlr_seat.h>
 #include <wlr/types/wlr_subcompositor.h>
+#include <wlr/types/wlr_xcursor_manager.h>
 #include <wlr/types/wlr_xdg_shell.h>
 #include <wlr/util/log.h>
+
+#include "shaders.h"
 
 struct ctwl_server {
     struct wl_display *display;
@@ -28,8 +38,24 @@ struct ctwl_server {
     struct wl_listener new_xdg_popup;
     struct wl_list toplevels;
 
+    struct wlr_cursor *cursor;
+    struct xlr_xcursor_manager *cursor_mgr;
+    struct wl_listener pointer_motion;
+    struct wl_listener cursor_motion_absolute;
+    struct wl_listener cursor_button;
+    struct wl_listener cursor_axis;
+    struct wl_listener cursor_frame;
+
+    struct wlr_seat *seat;
+    struct wl_listener new_input;
+    struct wl_listener request_cursor;
+    struct wl_listener request_set_selection;
+    struct wl_list keyboards;
+
     struct wl_list outputs;
     struct wl_listener new_output;
+
+    struct ctwl_gl gl;
 };
 
 struct ctwl_output {
@@ -91,6 +117,39 @@ struct ctwl_toplevel {
 //     free(ctwl_output);
 // }
 
+static void server_pointer_motion(struct wl_listener *listener, void *data) {
+    struct ctwl_server *server =
+        wl_container_of(listener, server, pointer_motion);
+    struct wlr_pointer_motion_event *event = data;
+    wlr_log(WLR_DEBUG, "move %d %d", event->delta_x, event->delta_y);
+}
+
+static void server_new_input_keyboard(struct ctwl_server *server,
+                                      struct wlr_input_device *device) {
+    wlr_log(WLR_INFO, "new keyboard");
+}
+
+static void server_new_input_pointer(struct ctwl_server *server,
+                                     struct wlr_input_device *device) {
+    struct wlr_pointer *pointer = wlr_pointer_from_input_device(device);
+
+    wlr_log(WLR_INFO, "new pointer");
+    wl_signal_add(&pointer->events.motion, &server->pointer_motion);
+}
+
+static void server_new_input(struct wl_listener *listener, void *data) {
+    struct ctwl_server *server = wl_container_of(listener, server, new_input);
+    struct wlr_input_device *device = data;
+    switch (device->type) {
+        case WLR_INPUT_DEVICE_KEYBOARD:
+            server_new_input_keyboard(server, device);
+            break;
+        case WLR_INPUT_DEVICE_POINTER:
+            server_new_input_pointer(server, device);
+            break;
+    }
+}
+
 static void output_frame(struct wl_listener *listener, void *data) {
     struct ctwl_output *output = wl_container_of(listener, output, frame);
     struct ctwl_server *server = output->server;
@@ -101,31 +160,52 @@ static void output_frame(struct wl_listener *listener, void *data) {
 
     int width = wlr_output->width;
     int height = wlr_output->height;
-    // wlr_log(WLR_DEBUG, "output frame %dx%d", width, height);
+
+    mat4 view_matrix;
+    versor orientation = GLM_QUAT_IDENTITY_INIT;
+    vec3 position = GLM_VEC3_ZERO_INIT;
+    glm_quat_look(position, orientation, view_matrix);
+
+    mat4 projection_matrix;
+    glm_perspective_default((float)width / height, projection_matrix);
 
     struct wlr_output_state state;
     wlr_output_state_init(&state);
     struct wlr_render_pass *pass =
         wlr_output_begin_render_pass(wlr_output, &state, NULL, NULL);
 
-    glClearColor(.05, .05, .05, 1.);
+    glClearColor(0.2f, 0.3f, 0.3f, 1.);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    struct ctwl_toplevel *t;
-    wl_list_for_each(t, &server->toplevels, link) {
-        struct wlr_surface *surface = t->xdg_toplevel->base->surface;
-        struct wlr_texture *texture = wlr_surface_get_texture(surface);
-        wlr_log(WLR_DEBUG, "isgles: %d", wlr_texture_is_gles2(texture));
-        if (texture == NULL) {
-            wlr_log(WLR_DEBUG, "NO TEX");
-            continue;
-        }
-        wlr_render_pass_add_texture(
-            pass,
-            &(struct wlr_render_texture_options){
-                .texture = t->xdg_toplevel->base->surface->buffer->texture});
-        wlr_surface_send_frame_done(surface, &now);
-    };
+    // wlr_render_pass_add_rect(
+    //     pass, &(struct wlr_render_rect_options){
+    //               .box = {.x = 0, .y = 0, .height = 100, .width = 150},
+    //               .color = {
+    //                   .r = 1.,
+    //                   .g = 0.,
+    //                   .b = 0.,
+    //                   .a = 0.,
+    //               }});
+
+    // mat4 vp_matrix = GLM_MAT4_IDENTITY_INIT;
+    // glm_mat4_mul()
+
+    // struct ctwl_toplevel *t;
+    // wl_list_for_each(t, &server->toplevels, link) {
+    //     struct wlr_surface *surface = t->xdg_toplevel->base->surface;
+    //     struct wlr_texture *texture = wlr_surface_get_texture(surface);
+    //     if (texture == NULL) {
+    //         wlr_log(WLR_DEBUG, "NO TEX");
+    //         continue;
+    //     }
+    //     wlr_render_pass_add_texture(
+    //         pass,
+    //         &(struct wlr_render_texture_options){
+    //             .texture =
+    //             t->xdg_toplevel->base->surface->buffer->texture, .dst_box
+    //             = {.x = 0, .y = 0}});
+    //     wlr_surface_send_frame_done(surface, &now);
+    // };
 
     wlr_render_pass_submit(pass);
     wlr_output_commit_state(wlr_output, &state);
@@ -253,7 +333,15 @@ int main(int argc, char **argv) {
         wlr_compositor_create(server.display, 5, server.renderer);
     wlr_subcompositor_create(server.display);
     wlr_data_device_manager_create(server.display);
-    // compositor.
+
+    // Create a cursor utility
+    // server.cursor = wlr_cursor_create();
+    server.cursor_mgr = wlr_xcursor_manager_create(NULL, 24);
+
+    server.pointer_motion.notify = server_pointer_motion;
+    server.seat = wlr_seat_create(server.display, "seat0");
+    server.new_input.notify = server_new_input;
+    wl_signal_add(&server.backend->events.new_input, &server.new_input);
 
     // Bind to output event
     wl_list_init(&server.outputs);
@@ -288,10 +376,22 @@ int main(int argc, char **argv) {
     wlr_log(WLR_INFO, "Running Wayland compositor on WAYLAND_DISPLAY=%s",
             socket);
 
+    struct wlr_egl *egl = wlr_gles2_renderer_get_egl(server.renderer);
+    wlr_egl_make_current(egl);
+    const char *gl_exts =
+        (const char *)glGetString(GL_SHADING_LANGUAGE_VERSION);
+    wlr_log(WLR_ERROR, "Exts %s", gl_exts);
+
+    // Init GL shaders
+    ctwl_gl_init(&server.gl);
+
+    wlr_egl_unset_current(egl);
+
     // Start the WL display
     wl_display_run(server.display);
 
     // Cleanup
+    ctwl_gl_finish(&server.gl);
     wl_display_destroy_clients(server.display);
     wl_display_destroy(server.display);
 }

@@ -8,6 +8,10 @@
         "wlr_renderer.h": "c",
         "wlr_xdg_shell.h": "c",
         "khrplatform.h": "c",
-        "wlr_subcompositor.h": "c"
+        "wlr_subcompositor.h": "c",
+        "gl2ext.h": "c",
+        "fragment.h": "c",
+        "wlr_xcursor_manager.h": "c",
+        "wlr_compositor.h": "c"
     }
 }
