@@ -179,20 +179,22 @@ static void output_frame(struct wl_listener *listener, void *data) {
     glClear(GL_COLOR_BUFFER_BIT);
 
     GLfloat vertices[] = {
-        0.0f,  0.5f,  0.0f,  //
-        -0.5f, -0.5f, 0.0f,  //
-        0.5f,  -0.5f, 0.0f,  //
+        -1.0, -1.0,  //
+        -1.0, 1.0,   //
+        1.0,  -1.0,  //
+        1.0,  1.0,   //
+        // 0.0, 0.0, //
     };
     GLuint prog = server->gl.hello_world;
     // wlr_log(WLR_INFO, "prog %d", prog);
     glUseProgram(prog);
 
     GLint pos_loc = glGetAttribLocation(prog, "pos");
-
-    glVertexAttribPointer(pos_loc, 3, GL_FLOAT, GL_FALSE, 0, vertices);
+    wlr_log(WLR_INFO, "pos %d", pos_loc);
+    glVertexAttribPointer(pos_loc, 2, GL_FLOAT, GL_FALSE, 0, vertices);
     glEnableVertexAttribArray(pos_loc);
     // glBindAttribLocation(server->gl.hello_world, 0, 'pos');
-    glDrawArrays(GL_TRIANGLES, 0, 3);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
     glUseProgram(0);
 
     // glGenBuffers(1, &server->buffer);
