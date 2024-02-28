@@ -56,6 +56,7 @@ struct ctwl_server {
     struct wl_listener new_output;
 
     struct ctwl_gl gl;
+    GLuint buffer;
 };
 
 struct ctwl_output {
@@ -176,6 +177,28 @@ static void output_frame(struct wl_listener *listener, void *data) {
 
     glClearColor(0.2f, 0.3f, 0.3f, 1.);
     glClear(GL_COLOR_BUFFER_BIT);
+
+    GLfloat vertices[] = {
+        0.0f,  0.5f,  0.0f,  //
+        -0.5f, -0.5f, 0.0f,  //
+        0.5f,  -0.5f, 0.0f,  //
+    };
+    GLuint prog = server->gl.hello_world;
+    // wlr_log(WLR_INFO, "prog %d", prog);
+    glUseProgram(prog);
+
+    GLint pos_loc = glGetAttribLocation(prog, "pos");
+
+    glVertexAttribPointer(pos_loc, 3, GL_FLOAT, GL_FALSE, 0, vertices);
+    glEnableVertexAttribArray(pos_loc);
+    // glBindAttribLocation(server->gl.hello_world, 0, 'pos');
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+    glUseProgram(0);
+
+    // glGenBuffers(1, &server->buffer);
+    // glBindBuffer(GL_ARRAY_BUFFER, server->buffer);
+    // glBufferData(GL_ARRAY_BUFFER, 4 * 2 * sizeof(GLfloat), NULL,
+    //              GL_STATIC_DRAW);
 
     // wlr_render_pass_add_rect(
     //     pass, &(struct wlr_render_rect_options){
@@ -378,20 +401,16 @@ int main(int argc, char **argv) {
 
     struct wlr_egl *egl = wlr_gles2_renderer_get_egl(server.renderer);
     wlr_egl_make_current(egl);
-    const char *gl_exts =
-        (const char *)glGetString(GL_SHADING_LANGUAGE_VERSION);
-    wlr_log(WLR_ERROR, "Exts %s", gl_exts);
-
     // Init GL shaders
-    ctwl_gl_init(&server.gl);
-
+    if (!ctwl_gl_init(&server.gl)) {
+        return 1;
+    };
     wlr_egl_unset_current(egl);
 
     // Start the WL display
     wl_display_run(server.display);
 
     // Cleanup
-    ctwl_gl_finish(&server.gl);
     wl_display_destroy_clients(server.display);
     wl_display_destroy(server.display);
 }

@@ -12,6 +12,7 @@
         "gl2ext.h": "c",
         "fragment.h": "c",
         "wlr_xcursor_manager.h": "c",
-        "wlr_compositor.h": "c"
+        "wlr_compositor.h": "c",
+        "cglm.h": "c"
     }
 }

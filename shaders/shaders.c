@@ -77,6 +77,8 @@ bool ctwl_gl_init(struct ctwl_gl *gl) {
         glDeleteShader(fragment_shader);
         *job->program_ptr = program;
     }
+
+    return true;
 }
 
 void ctwl_gl_finish(struct ctwl_gl *gl) { glDeleteProgram(gl->hello_world); }

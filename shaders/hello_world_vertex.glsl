@@ -1,5 +1,7 @@
-#version 320 es
+// #version 320 es
+
+attribute vec3 pos;
 
 void main() {
-    gl_Position = gl_Vertex;
+    gl_Position = vec4(pos, 1.0);
 }
